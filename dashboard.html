@@ -102,10 +102,7 @@ function renderCustomers(list) {
 }
 
 async function loadData() {
-  const [custRes, pendingRes] = await Promise.all([
-    db.from('customers').select('*, compliance(*)').eq('active', true).order('name'),
-    db.from('inspections').select('*, customers(name), employees(name)').eq('status','pending_review').order('created_at',{ascending:false})
-  ])
+  const custRes = await db.from('customers').select('*, compliance(*)').eq('active', true).order('name')
   if (custRes.data) {
     allCustomers = custRes.data
     renderCustomers(allCustomers)
@@ -113,30 +110,27 @@ async function loadData() {
     document.getElementById('stat-total').textContent = allCustomers.length
     document.getElementById('stat-incomplete').textContent = incomplete
   }
-  if (pendingRes.data) {
-    document.getElementById('stat-pending').textContent = pendingRes.data.length
-    const qEl = document.getElementById('queue-list')
-    if (!pendingRes.data.length) {
-      qEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-400)">No reports pending review ✅</div>'
-    } else {
-      qEl.innerHTML = pendingRes.data.map(r=>`
-        <a href="/inspection-review.html?id=${r.id}" style="text-decoration:none;color:inherit">
-          <div style="background:#fff;border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:10px;border-left:4px solid var(--amber)">
-            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-              <span style="font-size:16px;font-weight:700;color:var(--navy)">${r.customers?.name}</span>
-              <span style="font-size:12px;color:var(--gray-400)">${new Date(r.created_at).toLocaleDateString()}</span>
-            </div>
-            <div style="font-size:13px;color:var(--gray-600);margin-bottom:10px">👤 ${r.employees?.name}</div>
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span class="pill pill-pending">⏳ Pending Review</span>
-              <span style="font-size:13px;color:var(--blue);font-weight:700">Review →</span>
-            </div>
+
+  const pendingRes = await db.from('inspections').select('*, customers(name), employees(name)').eq('status', 'pending_review').order('created_at', {ascending: false})
+  const pending = pendingRes.data || []
+  document.getElementById('stat-pending').textContent = pending.length
+  const qEl = document.getElementById('queue-list')
+  if (!pending.length) {
+    qEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-400)">No reports pending review ✅</div>'
+  } else {
+    qEl.innerHTML = pending.map(r=>`
+      <a href="/inspection-review.html?id=${r.id}" style="text-decoration:none;color:inherit">
+        <div style="background:#fff;border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:10px;border-left:4px solid var(--amber)">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:16px;font-weight:700;color:var(--navy)">${r.customers?.name}</span>
+            <span style="font-size:12px;color:var(--gray-400)">${new Date(r.created_at).toLocaleDateString()}</span>
           </div>
-        </a>`).join('')
-    }
+          <div style="font-size:13px;color:var(--gray-600);margin-bottom:10px">👤 ${r.employees?.name}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="pill pill-pending">⏳ Pending Review</span>
+            <span style="font-size:13px;color:var(--blue);font-weight:700">Review →</span>
+          </div>
+        </div>
+      </a>`).join('')
   }
 }
-loadData()
-</script>
-</body>
-</html>
