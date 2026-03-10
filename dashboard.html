@@ -100,7 +100,12 @@ function renderCustomers(list) {
     </a>`
   }).join('')
 }
-
+function showTab(tab) {
+  document.getElementById('customers-panel').style.display = tab==='customers'?'block':'none'
+  document.getElementById('queue-panel').style.display = tab==='queue'?'block':'none'
+  document.getElementById('tab-customers').className = 'tab' + (tab==='customers'?' active':'')
+  document.getElementById('tab-queue').className = 'tab' + (tab==='queue'?' active':'')
+}
 async function loadData() {
   const custRes = await db.from('customers').select('*, compliance(*)').eq('active', true).order('name')
   if (custRes.data) {
