@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Customer – Pelican Pest Portal</title>
+<link rel="stylesheet" href="/styles.css">
+<script>window.ENV_SUPABASE_URL='https://ioacpnmzcycimgobjoyi.supabase.co';window.ENV_SUPABASE_KEY='sb_publishable_liX2cpOBGnC7tC6TTbIS1w_eH8WaXbi';</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="back-btn" onclick="window.location.href='/dashboard.html'">← Back</button>
+  <span class="topbar-title">CUSTOMER FILE</span>
+  <div class="user-badge" id="emp-badge">?</div>
+</div>
+
+<div id="profile-hero" style="background:linear-gradient(135deg,var(--navy) 0%,#0d2444 100%);padding:18px 16px;color:#fff;border-bottom:3px solid var(--green)">
+  <div class="loading">Loading...</div>
+</div>
+
+<div class="page-body">
+  <div id="compliance-card" class="card" style="display:none">
+    <div class="card-title">📋 FILE COMPLIANCE</div>
+    <div id="compliance-items"></div>
+  </div>
+  <div id="action-grid" class="action-grid" style="display:none">
+    <a id="new-report-btn" href="#" class="action-tile">
+      <div class="tile-icon">📝</div>
+      <div class="tile-label">New Inspection Report</div>
+      <div class="tile-count" id="report-count">0 past reports</div>
+    </a>
+    <div class="action-tile green-top" onclick="triggerDocUpload()">
+      <div class="tile-icon">📄</div>
+      <div class="tile-label">Upload Document</div>
+      <div class="tile-count" id="doc-count">0 on file</div>
+    </div>
+    <div class="action-tile orange-top">
+      <div class="tile-icon">📷</div>
+      <div class="tile-label">Photos & Videos</div>
+      <div class="tile-count">Coming Phase 2</div>
+    </div>
+    <div class="action-tile navy-top">
+      <div class="tile-icon">📍</div>
+      <div class="tile-label">Bait Stations</div>
+      <div class="tile-count">Coming Phase 2</div>
+    </div>
+  </div>
+  <div id="reports-card" class="card" style="display:none">
+    <div class="card-title">🗂 RECENT INSPECTION REPORTS</div>
+    <div id="reports-list"></div>
+  </div>
+  <div id="docs-card" class="card" style="display:none">
+    <div class="card-title">📄 DOCUMENTS ON FILE</div>
+    <div id="docs-list"></div>
+  </div>
+</div>
+
+<input type="file" id="doc-file-input" style="display:none" accept=".pdf,.jpg,.jpeg,.png">
+<input type="file" id="comp-file-input" style="display:none" accept=".pdf,.jpg,.jpeg,.png">
+
+<script>
+const { createClient } = supabase
+const db = createClient(window.ENV_SUPABASE_URL, window.ENV_SUPABASE_KEY)
+
+const employee = JSON.parse(localStorage.getItem('pelican_employee') || 'null')
+if (!employee) window.location.href = '/'
+
+const params = new URLSearchParams(window.location.search)
+const customerId = params.get('id')
+if (!customerId) window.location.href = '/dashboard.html'
+
+document.getElementById('emp-badge').textContent = employee.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
+
+let pendingDocType = null
+
+async function loadCustomer() {
+  const [custRes, compRes, inspRes, docRes] = await Promise.all([
+    db.from('customers').select('*').eq('id', customerId).single(),
+    db.from('compliance').select('*').eq('customer_id', customerId).single(),
+    db.from('inspections').select('*, employees(name)').eq('customer_id', customerId).order('inspection_date',{ascending:false}),
+    db.from('documents').select('*').eq('customer_id', customerId).order('created_at',{ascending:false})
+  ])
+
+  const customer = custRes.data
+  if (!customer) { window.location.href = '/dashboard.html'; return }
+  const comp = compRes.data
+
+  document.getElementById('profile-hero').innerHTML = `
+    <h2 style="font-size:22px;font-weight:800">${customer.name}</h2>
+    <p style="font-size:13px;color:rgba(255,255,255,0.65);margin-top:3px">${customer.address||''}${customer.city?', '+customer.city:''}, ${customer.state||'LA'} ${customer.zip||''}</p>
+    ${customer.phone?`<p style="font-size:13px;color:rgba(255,255,255,0.65);margin-top:2px">📞 ${customer.phone}</p>`:''}
+    ${customer.email?`<p style="font-size:13px;color:rgba(255,255,255,0.65);margin-top:2px">✉️ ${customer.email}</p>`:''}
+  `
+
+  const compItems = [
+    {label:'Signed Agreement', ok:comp?.has_agreement, type:'agreement'},
+    {label:'Waiver', ok:comp?.has_waiver, type:'waiver'},
+    {label:'Diagram', ok:comp?.has_diagram, type:'diagram'},
+    {label:'Current Inspection Report', ok:!!comp?.last_inspection_date, date:comp?.last_inspection_date},
+  ]
+  document.getElementById('compliance-items').innerHTML = compItems.map(item=>`
+    <div class="compliance-row">
+      <div class="c-icon ${item.ok?'ok':'missing'}">${item.ok?'✅':'❌'}</div>
+      <span class="c-label">${item.label}</span>
+      ${item.ok&&item.date?`<span style="font-size:12px;color:var(--gray-400)">${new Date(item.date).toLocaleDateString()}</span>`:''}
+      ${!item.ok&&item.type?`<button onclick="uploadCompDoc('${item.type}')" style="background:var(--blue);color:#fff;border:none;padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">Upload</button>`:''}
+      ${!item.ok&&!item.type?'<span class="pill pill-missing">Missing</span>':''}
+    </div>`).join('')
+  document.getElementById('compliance-card').style.display = 'block'
+
+  document.getElementById('new-report-btn').href = `/inspection-new.html?customer=${customerId}`
+  document.getElementById('report-count').textContent = `${inspRes.data?.length||0} past reports`
+  document.getElementById('doc-count').textContent = `${docRes.data?.length||0} on file`
+  document.getElementById('action-grid').style.display = 'grid'
+
+  if (inspRes.data?.length) {
+    document.getElementById('reports-list').innerHTML = inspRes.data.map(r=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-100)">
+        <div>
+          <div style="font-weight:700;font-size:14px">${new Date(r.inspection_date).toLocaleDateString()}</div>
+          <div style="font-size:12px;color:var(--gray-400)">${r.employees?.name} · ${r.status}</div>
+        </div>
+        <a href="/inspection-review.html?id=${r.id}">
+          <span class="pill ${r.status==='sent'?'pill-approved':'pill-pending'}">${r.status==='sent'?'✅ Sent':'⏳ Review'}</span>
+        </a>
+      </div>`).join('')
+    document.getElementById('reports-card').style.display = 'block'
+  }
+
+  if (docRes.data?.length) {
+    document.getElementById('docs-list').innerHTML = docRes.data.map(doc=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-100)">
+        <div>
+          <div style="font-weight:600;font-size:14px">${doc.file_name}</div>
+          <div style="font-size:12px;color:var(--gray-400);text-transform:capitalize">${doc.doc_type} · ${new Date(doc.created_at).toLocaleDateString()}</div>
+        </div>
+        <button onclick="viewDoc('${doc.storage_path}')" style="background:var(--blue);color:#fff;border:none;padding:5px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">View</button>
+      </div>`).join('')
+    document.getElementById('docs-card').style.display = 'block'
+  }
+}
+
+function triggerDocUpload() { pendingDocType='other'; document.getElementById('doc-file-input').click() }
+function uploadCompDoc(type) { pendingDocType=type; document.getElementById('comp-file-input').click() }
+
+async function handleUpload(file, docType) {
+  if (!file) return
+  const path = `${customerId}/${docType}/${Date.now()}_${file.name}`
+  const {error} = await db.storage.from('pelican-files').upload(path, file)
+  if (error) { alert('Upload failed. Please try again.'); return }
+  await db.from('documents').insert({customer_id:customerId, doc_type:docType, file_name:file.name, storage_path:path, uploaded_by:employee.id})
+  const update = {}
+  if (docType==='agreement') update.has_agreement=true
+  if (docType==='waiver') update.has_waiver=true
+  if (docType==='diagram') update.has_diagram=true
+  if (Object.keys(update).length) await db.from('compliance').upsert({customer_id:customerId, ...update, updated_at:new Date().toISOString()})
+  alert('File uploaded successfully!')
+  loadCustomer()
+}
+
+async function viewDoc(path) {
+  const {data} = await db.storage.from('pelican-files').createSignedUrl(path, 60)
+  if (data?.signedUrl) window.open(data.signedUrl,'_blank')
+}
+
+document.getElementById('doc-file-input').addEventListener('change', e=>handleUpload(e.target.files[0], pendingDocType||'other'))
+document.getElementById('comp-file-input').addEventListener('change', e=>handleUpload(e.target.files[0], pendingDocType))
+
+loadCustomer()
+</script>
+</body>
+</html>

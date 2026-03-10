@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/**/*.js", "use": "@vercel/node" },
+    { "src": "*.html", "use": "@vercel/static" },
+    { "src": "*.js", "use": "@vercel/static" },
+    { "src": "*.css", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/dashboard", "dest": "/dashboard.html" },
+    { "src": "/customer/(.*)", "dest": "/customer.html" },
+    { "src": "/inspection/new", "dest": "/inspection-new.html" },
+    { "src": "/inspection/review", "dest": "/inspection-review.html" },
+    { "src": "/submitted", "dest": "/submitted.html" },
+    { "src": "/", "dest": "/index.html" }
+  ]
+}

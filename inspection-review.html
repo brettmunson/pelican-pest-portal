@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Review Report – Pelican Pest Portal</title>
+<link rel="stylesheet" href="/styles.css">
+<script>window.ENV_SUPABASE_URL='https://ioacpnmzcycimgobjoyi.supabase.co';window.ENV_SUPABASE_KEY='sb_publishable_liX2cpOBGnC7tC6TTbIS1w_eH8WaXbi';</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="back-btn" onclick="window.location.href='/dashboard.html'">← Queue</button>
+  <span class="topbar-title">REVIEW REPORT</span>
+  <div class="user-badge">OF</div>
+</div>
+<div class="page-body">
+  <div id="report-content"><div class="loading">Loading report...</div></div>
+</div>
+<div class="submit-bar">
+  <button class="btn btn-outline btn-sm" style="flex:1" onclick="sendBack()">↩ Send Back</button>
+  <button class="btn btn-green" style="flex:2" id="approve-btn" onclick="approveAndSend()">✅ Approve & Send</button>
+</div>
+<script>
+const { createClient } = supabase
+const db = createClient(window.ENV_SUPABASE_URL, window.ENV_SUPABASE_KEY)
+
+const employee = JSON.parse(localStorage.getItem('pelican_employee') || 'null')
+if (!employee) window.location.href = '/'
+
+const params = new URLSearchParams(window.location.search)
+const reportId = params.get('id')
+if (!reportId) window.location.href = '/dashboard.html'
+
+let report = null
+
+async function loadReport() {
+  const { data } = await db.from('inspections').select('*, customers(*), employees(*)').eq('id', reportId).single()
+  if (!data) { window.location.href = '/dashboard.html'; return }
+  report = data
+  const r = data, c = data.customers, t = data.employees
+  const areas = r.areas_inspected || {}
+  const conditions = r.conducive_conditions || []
+  document.getElementById('report-content').innerHTML = `
+    <div class="card">
+      <div class="card-title">📋 REPORT DETAILS</div>
+      <div style="font-size:16px;font-weight:700;color:var(--navy)">${c?.name}</div>
+      <div style="font-size:13px;color:var(--gray-400);margin-top:3px">${c?.address}, ${c?.city}, ${c?.state}</div>
+      <div class="divider"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><div class="text-small">INSPECTOR</div><div style="font-weight:700;font-size:14px">${t?.name}</div></div>
+        <div><div class="text-small">LICENSE</div><div style="font-weight:700;font-size:14px;color:var(--blue)">${t?.license_number}</div></div>
+        <div><div class="text-small">DATE</div><div style="font-weight:700;font-size:14px">${new Date(r.inspection_date).toLocaleDateString()}</div></div>
+        <div><div class="text-small">STATUS</div><span class="pill pill-pending">⏳ Pending</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🏠 AREAS INSPECTED</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${Object.entries(areas).map(([area,ok])=>`<span style="background:${ok?'var(--success-light)':'var(--red-light)'};color:${ok?'var(--success)':'var(--red)'};padding:4px 10px;border-radius:20px;font-size:13px;font-weight:600">${ok?'✓':'✗'} ${area}</span>`).join('')}
+      </div>
+      ${r.limitations?`<div style="margin-top:10px;font-size:13px;color:var(--gray-600);background:var(--amber-light);padding:10px;border-radius:8px;border-left:3px solid var(--amber)">⚠️ <strong>Limitation:</strong> ${r.limitations}</div>`:''}
+    </div>
+    ${conditions.length?`<div class="card"><div class="card-title">⚠️ CONDUCIVE CONDITIONS</div>${conditions.map(c=>`<div style="background:var(--amber-light);border-radius:8px;padding:10px 12px;border-left:3px solid var(--amber);margin-bottom:8px"><div style="font-weight:700;font-size:14px;color:var(--navy)">${c.name}</div></div>`).join('')}</div>`:''}
+    ${r.findings?`<div class="card"><div class="card-title">📝 FINDINGS</div><p style="font-size:14px;line-height:1.7;color:var(--gray-600)">${r.findings}</p></div>`:''}
+    ${r.recommendations?`<div class="card"><div class="card-title">💡 RECOMMENDATIONS</div><p style="font-size:14px;line-height:1.7;color:var(--gray-600)">${r.recommendations}</p></div>`:''}
+    <div class="card" style="border:1.5px solid var(--gray-200)">
+      <div class="card-title">✏️ OFFICE NOTES</div>
+      <textarea id="office-notes" style="width:100%;height:80px;resize:none;border:1.5px solid var(--gray-200);border-radius:9px;padding:9px 11px;font-family:inherit;font-size:14px" placeholder="Add notes or corrections. Required if sending back to tech.">${r.office_notes||''}</textarea>
+    </div>
+  `
+}
+
+async function approveAndSend() {
+  const btn = document.getElementById('approve-btn')
+  btn.textContent = 'Processing...'
+  btn.disabled = true
+  const notes = document.getElementById('office-notes')?.value || ''
+  await db.from('inspections').update({status:'sent',office_notes:notes,approved_by:employee.id,approved_at:new Date().toISOString(),sent_at:new Date().toISOString()}).eq('id', reportId)
+  alert('Report approved! Email automation coming in the next build phase.')
+  window.location.href = '/dashboard.html'
+}
+
+async function sendBack() {
+  const notes = document.getElementById('office-notes')?.value || ''
+  if (!notes.trim()) { alert('Please add a note explaining what needs to be fixed.'); return }
+  await db.from('inspections').update({status:'draft',office_notes:notes}).eq('id', reportId)
+  alert('Report sent back to technician.')
+  window.location.href = '/dashboard.html'
+}
+
+loadReport()
+</script>
+</body>
+</html>

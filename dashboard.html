@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Dashboard – Pelican Pest Portal</title>
+<link rel="stylesheet" href="/styles.css">
+<script>window.ENV_SUPABASE_URL='https://ioacpnmzcycimgobjoyi.supabase.co';window.ENV_SUPABASE_KEY='sb_publishable_liX2cpOBGnC7tC6TTbIS1w_eH8WaXbi';</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left"><span style="font-size:22px">🐦</span><span class="topbar-title">TERMITE PORTAL</span></div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span id="emp-name" style="font-size:13px;color:rgba(255,255,255,0.7)"></span>
+    <div class="user-badge" id="emp-badge">?</div>
+    <button onclick="doLogout()" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:5px 10px;border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit;">Out</button>
+  </div>
+</div>
+
+<div class="page-body">
+  <div class="greeting-banner">
+    <h2 id="greeting">Welcome 👋</h2>
+    <p>Termite Documentation Portal</p>
+    <div class="stat-row">
+      <div class="stat-pill"><div class="num" id="stat-total">—</div><div class="lbl">Customers</div></div>
+      <div class="stat-pill"><div class="num" id="stat-incomplete" style="color:#ff6b6b">—</div><div class="lbl">Incomplete</div></div>
+      <div class="stat-pill"><div class="num" id="stat-pending">—</div><div class="lbl">Pending Review</div></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('customers')">🏠 Customers</button>
+    <button class="tab" id="tab-queue" onclick="showTab('queue')">📋 Review Queue</button>
+  </div>
+
+  <div id="customers-panel">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" placeholder="Search customer name or address..." oninput="filterCustomers(this.value)">
+    </div>
+    <div class="section-label">ALL TERMITE CUSTOMERS</div>
+    <div id="customer-list"><div class="loading">Loading customers...</div></div>
+    <div style="margin-top:12px">
+      <a href="/add-customer.html" class="btn btn-primary">+ Add New Customer</a>
+    </div>
+  </div>
+
+  <div id="queue-panel" style="display:none">
+    <div class="section-label">REPORTS PENDING REVIEW</div>
+    <div id="queue-list"><div class="loading">Loading...</div></div>
+  </div>
+</div>
+
+<script>
+const { createClient } = supabase
+const db = createClient(window.ENV_SUPABASE_URL, window.ENV_SUPABASE_KEY)
+
+const employee = JSON.parse(localStorage.getItem('pelican_employee') || 'null')
+if (!employee) window.location.href = '/'
+
+let allCustomers = []
+
+document.getElementById('emp-name').textContent = employee.name
+document.getElementById('emp-badge').textContent = employee.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
+document.getElementById('greeting').textContent = `Welcome, ${employee.name} 👋`
+
+function doLogout() { localStorage.removeItem('pelican_employee'); window.location.href = '/' }
+
+function showTab(tab) {
+  document.getElementById('customers-panel').style.display = tab==='customers'?'block':'none'
+  document.getElementById('queue-panel').style.display = tab==='queue'?'block':'none'
+  document.querySelectorAll('.tab').forEach((t,i) => t.className = 'tab' + (i===(tab==='customers'?0:1)?' active':''))
+}
+
+function filterCustomers(q) {
+  renderCustomers(allCustomers.filter(c => c.name.toLowerCase().includes(q.toLowerCase()) || (c.address||'').toLowerCase().includes(q.toLowerCase())))
+}
+
+function renderCustomers(list) {
+  const el = document.getElementById('customer-list')
+  if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-400)">No customers yet.</div>'; return }
+  el.innerHTML = list.map(c => {
+    const comp = c.compliance?.[0]
+    const dots = [comp?.has_agreement, comp?.has_waiver, comp?.has_diagram, !!comp?.last_inspection_date]
+    const allOk = dots.every(Boolean)
+    const inits = c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
+    return `<a href="/customer.html?id=${c.id}" class="customer-card">
+      <div class="cust-avatar">${inits}</div>
+      <div class="cust-info">
+        <h3>${c.name}</h3>
+        <p>${c.address||''}${c.city?', '+c.city:''}</p>
+        <div class="compliance-dots">
+          ${dots.map(ok=>`<div class="dot ${ok?'dot-ok':'dot-missing'}"></div>`).join('')}
+          <span style="font-size:11px;color:var(--gray-400);margin-left:4px">${allOk?'File complete':'Missing items'}</span>
+        </div>
+      </div>
+      <span style="color:var(--gray-400);font-size:20px">›</span>
+    </a>`
+  }).join('')
+}
+
+async function loadData() {
+  const [custRes, pendingRes] = await Promise.all([
+    db.from('customers').select('*, compliance(*)').eq('active', true).order('name'),
+    db.from('inspections').select('*, customers(name), employees(name)').eq('status','pending_review').order('created_at',{ascending:false})
+  ])
+  if (custRes.data) {
+    allCustomers = custRes.data
+    renderCustomers(allCustomers)
+    const incomplete = allCustomers.filter(c => { const comp=c.compliance?.[0]; return !comp||!comp.has_agreement||!comp.has_waiver||!comp.has_diagram||!comp.last_inspection_date }).length
+    document.getElementById('stat-total').textContent = allCustomers.length
+    document.getElementById('stat-incomplete').textContent = incomplete
+  }
+  if (pendingRes.data) {
+    document.getElementById('stat-pending').textContent = pendingRes.data.length
+    const qEl = document.getElementById('queue-list')
+    if (!pendingRes.data.length) {
+      qEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-400)">No reports pending review ✅</div>'
+    } else {
+      qEl.innerHTML = pendingRes.data.map(r=>`
+        <a href="/inspection-review.html?id=${r.id}" style="text-decoration:none;color:inherit">
+          <div style="background:#fff;border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:10px;border-left:4px solid var(--amber)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:16px;font-weight:700;color:var(--navy)">${r.customers?.name}</span>
+              <span style="font-size:12px;color:var(--gray-400)">${new Date(r.created_at).toLocaleDateString()}</span>
+            </div>
+            <div style="font-size:13px;color:var(--gray-600);margin-bottom:10px">👤 ${r.employees?.name}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="pill pill-pending">⏳ Pending Review</span>
+              <span style="font-size:13px;color:var(--blue);font-weight:700">Review →</span>
+            </div>
+          </div>
+        </a>`).join('')
+    }
+  }
+}
+loadData()
+</script>
+</body>
+</html>

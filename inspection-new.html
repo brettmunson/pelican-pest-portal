@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>New Inspection – Pelican Pest Portal</title>
+<link rel="stylesheet" href="/styles.css">
+<script>window.ENV_SUPABASE_URL='https://ioacpnmzcycimgobjoyi.supabase.co';window.ENV_SUPABASE_KEY='sb_publishable_liX2cpOBGnC7tC6TTbIS1w_eH8WaXbi';</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="back-btn" onclick="window.history.back()">← Back</button>
+  <span class="topbar-title">NEW INSPECTION</span>
+  <div class="user-badge" id="emp-badge">?</div>
+</div>
+<div class="page-body">
+  <div class="card">
+    <div class="section-header"><div class="section-num" style="background:var(--blue)">1</div><span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--navy)">Account Details</span></div>
+    <div class="form-group"><label>Customer Name</label><input type="text" id="f-customer" readonly style="background:var(--gray-50)"></div>
+    <div class="form-group"><label>Property Address</label><input type="text" id="f-address" readonly style="background:var(--gray-50)"></div>
+    <div class="row">
+      <div class="form-group"><label>Inspector</label><input type="text" id="f-tech" readonly style="background:var(--gray-50)"></div>
+      <div class="form-group"><label>License #</label><input type="text" id="f-license" readonly style="background:var(--gray-50);color:var(--blue);font-weight:700"></div>
+    </div>
+    <div class="form-group"><label>Inspection Date</label><input type="date" id="f-date"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-header"><div class="section-num" style="background:var(--green);color:var(--navy)">2</div><span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--navy)">Areas Inspected</span></div>
+    <div id="areas-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"></div>
+    <div id="limit-section" style="display:none">
+      <div style="font-size:12px;color:var(--amber);font-weight:700;margin-bottom:5px">⚠️ Describe limitations for unchecked areas</div>
+      <textarea id="f-limitations" style="width:100%;height:80px;resize:none;border:1.5px solid var(--gray-200);border-radius:9px;padding:9px 11px;font-family:inherit;font-size:14px" placeholder="Describe limitations..."></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-header"><div class="section-num" style="background:var(--orange)">3</div><span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--navy)">Inspection Summary</span><span style="font-size:11px;background:var(--gray-100);padding:2px 8px;border-radius:20px;color:var(--gray-400);font-weight:600;margin-left:auto">🔒 Pre-filled</span></div>
+    <div style="background:var(--gray-50);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:14px;font-size:13px;line-height:1.7;color:var(--gray-600);margin-bottom:12px">
+      No active termite activity was observed during this inspection. Conducive conditions were noted that may impact the effectiveness of termite protection if not corrected. These conditions should be addressed to help maintain the integrity of the termite warranty. Please review the Findings and Recommendations sections for additional information.
+    </div>
+    <div class="form-group" style="margin:0"><label>Additional Notes (optional)</label><textarea id="f-summary" style="height:70px;resize:none;width:100%;border:1.5px solid var(--gray-200);border-radius:9px;padding:9px 11px;font-family:inherit;font-size:14px" placeholder="Add any additional summary notes..."></textarea></div>
+  </div>
+
+  <div class="card">
+    <div class="section-header"><div class="section-num" style="background:var(--navy)">4</div><span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--navy)">Conducive Conditions</span></div>
+    <div id="selected-conditions"></div>
+    <button onclick="openSnippets()" style="border:2px dashed var(--blue-light);background:#f0f7ff;color:var(--blue);border-radius:8px;padding:11px 14px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;width:100%;text-align:left;margin-bottom:8px">＋ Add Conducive Condition</button>
+    <p class="text-small">Each condition requires a supporting photo.</p>
+  </div>
+
+  <div class="card">
+    <div class="section-header"><div class="section-num" style="background:var(--blue)">5</div><span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--navy)">Findings & Observations</span></div>
+    <div class="form-group"><label>Technician Findings</label><textarea id="f-findings" style="height:100px;resize:none;width:100%;border:1.5px solid var(--gray-200);border-radius:9px;padding:9px 11px;font-family:inherit;font-size:14px" placeholder="Describe your findings in detail..."></textarea></div>
+    <div class="form-group" style="margin:0"><label>Recommendations</label><textarea id="f-recommendations" style="height:80px;resize:none;width:100%;border:1.5px solid var(--gray-200);border-radius:9px;padding:9px 11px;font-family:inherit;font-size:14px" placeholder="List recommended actions..."></textarea></div>
+  </div>
+
+  <div class="card">
+    <div class="section-header"><div class="section-num" style="background:var(--green);color:var(--navy)">6</div><span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--navy)">Photos</span></div>
+    <label style="display:block;border:2px dashed var(--gray-200);border-radius:8px;padding:20px;text-align:center;cursor:pointer;background:var(--gray-50)">
+      <div style="font-size:32px;margin-bottom:8px">📷</div>
+      <p style="font-size:14px;color:var(--gray-400);font-weight:500">Tap to take or upload photos</p>
+      <input type="file" id="photo-input" accept="image/*" multiple capture="environment" style="display:none" onchange="handlePhotos(this)">
+    </label>
+    <div id="photo-previews" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>
+  </div>
+
+  <div style="background:var(--navy);border-radius:var(--radius);padding:18px;margin-bottom:14px;border-top:3px solid var(--green)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--green)">🛡 TERMITE PREVENTION TIPS</span>
+      <span style="font-size:11px;background:rgba(255,255,255,0.1);padding:2px 8px;border-radius:20px;color:rgba(255,255,255,0.5)">Auto-included</span>
+    </div>
+    <div style="padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08)"><strong style="display:block;font-size:13px;color:#fff;margin-bottom:3px">Maintain Foundation Visibility</strong><p style="font-size:12px;line-height:1.6;color:rgba(255,255,255,0.6)">Keep the bottom portion of the foundation visible. Avoid covering with soil, mulch, gravel, or dense vegetation.</p></div>
+    <div style="padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08)"><strong style="display:block;font-size:13px;color:#fff;margin-bottom:3px">Keep Wood Away from Soil</strong><p style="font-size:12px;line-height:1.6;color:rgba(255,255,255,0.6)">Avoid wood contacting the ground — siding, fence posts, deck supports, landscape timbers, and stored lumber.</p></div>
+    <div style="padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08)"><strong style="display:block;font-size:13px;color:#fff;margin-bottom:3px">Control Moisture Around the Home</strong><p style="font-size:12px;line-height:1.6;color:rgba(255,255,255,0.6)">Repair leaks promptly, ensure gutters function properly, direct water away from the foundation.</p></div>
+    <div style="padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08)"><strong style="display:block;font-size:13px;color:#fff;margin-bottom:3px">Store Items Away from the Foundation</strong><p style="font-size:12px;line-height:1.6;color:rgba(255,255,255,0.6)">Do not store firewood, cardboard, or lumber against the home. Maintain clear access for inspection.</p></div>
+    <div><strong style="display:block;font-size:13px;color:#fff;margin-bottom:3px">How Subterranean Termites Enter Homes</strong><p style="font-size:12px;line-height:1.6;color:rgba(255,255,255,0.6)">Through foundation cracks, expansion joints, plumbing penetrations, and wood in contact with the ground.</p></div>
+  </div>
+</div>
+
+<div class="submit-bar">
+  <button class="btn btn-green" id="submit-btn" onclick="submitReport()">Submit for Office Review →</button>
+</div>
+
+<div class="modal-overlay" id="snippet-modal" onclick="if(event.target===this)closeSnippets()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add Conducive Condition</div>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:14px">Tap a condition to add it.</p>
+    <div style="position:relative;margin-bottom:14px">
+      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--gray-400)">🔍</span>
+      <input type="text" placeholder="Search conditions..." oninput="filterSnippets(this.value)" style="width:100%;padding:10px 12px 10px 38px;border:1.5px solid var(--gray-200);border-radius:9px;font-family:inherit;font-size:14px">
+    </div>
+    <div id="snippet-list"></div>
+  </div>
+</div>
+
+<script>
+const { createClient } = supabase
+const db = createClient(window.ENV_SUPABASE_URL, window.ENV_SUPABASE_KEY)
+
+const employee = JSON.parse(localStorage.getItem('pelican_employee') || 'null')
+if (!employee) window.location.href = '/'
+
+const params = new URLSearchParams(window.location.search)
+const customerId = params.get('customer')
+if (!customerId) window.location.href = '/dashboard.html'
+
+document.getElementById('emp-badge').textContent = employee.name[0]
+document.getElementById('f-tech').value = employee.name
+document.getElementById('f-license').value = employee.license_number || '—'
+document.getElementById('f-date').value = new Date().toISOString().split('T')[0]
+
+const AREAS = ['Interior','Exterior','Crawlspace','Garage','Attic','Detached Structures']
+let areaState = {Interior:true,Exterior:true,Crawlspace:false,Garage:true,Attic:false,'Detached Structures':false}
+let selectedConditions = []
+let photoFiles = []
+
+const SNIPPETS = [
+  {id:'active',name:'Active Termite Activity Found'},{id:'limited',name:'Limited Inspection – Inaccessible Areas'},
+  {id:'stored',name:'Items Stored Against Foundation'},{id:'foam',name:'Foam Insulation'},
+  {id:'wooddebris',name:'Wood & Debris in Crawlspace'},{id:'vegetation',name:'Trees, Plants & Vegetation'},
+  {id:'inaccessible',name:'Inaccessible Crawl Space'},{id:'roofleak',name:'Roof Leak'},
+  {id:'stucco',name:'Stucco/Siding Below Grade'},{id:'prevdamage',name:'Previous Termite Damage'},
+  {id:'foundation',name:'Foundation Cracks'},{id:'mulch',name:'Mulch Blocking Foundation'},
+  {id:'skirting',name:'Wood Skirting'},{id:'firewood',name:'Firewood Against House'},
+  {id:'treeroots',name:'Tree Roots/Stumps'},{id:'formboards',name:'Form Boards Left in Place'},
+  {id:'wood2ground',name:'Wood to Ground Contact'},{id:'waterleak',name:'Water Leak'},
+  {id:'drainage',name:'Drainage Issues'},{id:'moisture',name:'Moisture-Related Issue'},
+]
+
+db.from('customers').select('*').eq('id', customerId).single().then(({data}) => {
+  if (!data) return
+  document.getElementById('f-customer').value = data.name
+  document.getElementById('f-address').value = `${data.address||''}, ${data.city||''}, ${data.state||'LA'}`
+})
+
+function renderAreas() {
+  document.getElementById('areas-grid').innerHTML = AREAS.map(area=>`
+    <div onclick="toggleArea('${area}')" style="border:1.5px solid ${areaState[area]?'var(--success)':'var(--gray-200)'};border-radius:8px;padding:10px 12px;cursor:pointer;background:${areaState[area]?'var(--success-light)':'#fff'};display:flex;align-items:center;gap:8px">
+      <div style="width:18px;height:18px;border-radius:50%;background:${areaState[area]?'var(--success)':'#fff'};border:2px solid ${areaState[area]?'var(--success)':'var(--gray-300)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${areaState[area]?'<span style="color:#fff;font-size:10px">✓</span>':''}</div>
+      <span style="font-size:13px;font-weight:600">${area}</span>
+    </div>`).join('')
+  document.getElementById('limit-section').style.display = Object.values(areaState).some(v=>!v)?'block':'none'
+}
+renderAreas()
+
+function toggleArea(area) { areaState[area]=!areaState[area]; renderAreas() }
+
+function openSnippets() { document.getElementById('snippet-modal').classList.add('open'); renderSnippets(SNIPPETS) }
+function closeSnippets() { document.getElementById('snippet-modal').classList.remove('open') }
+function filterSnippets(q) { renderSnippets(SNIPPETS.filter(s=>s.name.toLowerCase().includes(q.toLowerCase()))) }
+function renderSnippets(list) {
+  document.getElementById('snippet-list').innerHTML = list.map(s=>`
+    <div onclick="addCondition('${s.id}','${s.name.replace(/'/g,"\\'")}')" style="padding:12px 14px;border:1.5px solid var(--gray-100);border-radius:10px;margin-bottom:8px;cursor:pointer">
+      <div style="font-size:14px;font-weight:700;color:var(--navy)">${s.name}</div>
+    </div>`).join('')
+}
+function addCondition(id, name) {
+  if (!selectedConditions.find(s=>s.id===id)) selectedConditions.push({id,name})
+  renderConditions(); closeSnippets()
+}
+function removeCondition(id) { selectedConditions=selectedConditions.filter(s=>s.id!==id); renderConditions() }
+function renderConditions() {
+  document.getElementById('selected-conditions').innerHTML = selectedConditions.map(s=>`
+    <div style="background:var(--navy);color:#fff;border-radius:8px;padding:8px 12px;font-size:13px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="font-weight:600">⚠️ ${s.name}</span>
+      <button onclick="removeCondition('${s.id}')" style="background:rgba(255,255,255,0.15);border:none;color:#fff;cursor:pointer;font-size:16px;padding:0 4px;border-radius:4px">×</button>
+    </div>`).join('')
+}
+
+function handlePhotos(input) {
+  const files = Array.from(input.files)
+  photoFiles = [...photoFiles, ...files]
+  files.forEach(f => {
+    const div = document.createElement('div')
+    div.style.cssText = 'width:70px;height:70px;border-radius:8px;overflow:hidden;background:var(--gray-200)'
+    div.innerHTML = `<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover">`
+    document.getElementById('photo-previews').appendChild(div)
+  })
+}
+
+async function submitReport() {
+  const btn = document.getElementById('submit-btn')
+  btn.textContent = 'Submitting...'
+  btn.disabled = true
+  try {
+    const { data: insp, error } = await db.from('inspections').insert({
+      customer_id: customerId,
+      employee_id: employee.id,
+      inspection_date: document.getElementById('f-date').value,
+      status: 'pending_review',
+      areas_inspected: areaState,
+      limitations: document.getElementById('f-limitations').value,
+      summary_notes: document.getElementById('f-summary').value,
+      conducive_conditions: selectedConditions,
+      findings: document.getElementById('f-findings').value,
+      recommendations: document.getElementById('f-recommendations').value,
+    }).select().single()
+    if (error) throw error
+    for (const file of photoFiles) {
+      const path = `${customerId}/inspections/${insp.id}/${Date.now()}_${file.name}`
+      await db.storage.from('pelican-files').upload(path, file)
+      await db.from('photos').insert({inspection_id:insp.id, customer_id:customerId, photo_type:'general', storage_path:path})
+    }
+    await db.from('compliance').upsert({customer_id:customerId, last_inspection_date:document.getElementById('f-date').value, last_inspection_id:insp.id, updated_at:new Date().toISOString()})
+    window.location.href = '/submitted.html'
+  } catch(e) {
+    alert('Something went wrong. Please try again.')
+    btn.textContent = 'Submit for Office Review →'
+    btn.disabled = false
+  }
+}
+</script>
+</body>
+</html>
