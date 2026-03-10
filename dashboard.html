@@ -30,8 +30,8 @@
   </div>
 
   <div class="tabs">
-    <button class="tab active" onclick="showTab('customers')">🏠 Customers</button>
-    <button class="tab" id="tab-queue" onclick="showTab('queue')">📋 Review Queue</button>
+    <button class="tab active" id="tab-customers" onclick="showTab('customers')">🏠 Customers</button>
+<button class="tab" id="tab-queue" onclick="showTab('queue')">📋 Review Queue</button>
   </div>
 
   <div id="customers-panel">
@@ -70,7 +70,8 @@ function doLogout() { localStorage.removeItem('pelican_employee'); window.locati
 function showTab(tab) {
   document.getElementById('customers-panel').style.display = tab==='customers'?'block':'none'
   document.getElementById('queue-panel').style.display = tab==='queue'?'block':'none'
-  document.querySelectorAll('.tab').forEach((t,i) => t.className = 'tab' + (i===(tab==='customers'?0:1)?' active':''))
+ document.getElementById('tab-customers').className = 'tab' + (tab==='customers'?' active':'')
+document.getElementById('tab-queue').className = 'tab' + (tab==='queue'?' active':'')
 }
 
 function filterCustomers(q) {
